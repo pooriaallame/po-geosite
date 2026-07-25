@@ -1,0 +1,43 @@
+name: Build custom geosite.dat
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "data/**"
+      - ".github/workflows/build-dat.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Download domain-list-community builder
+        run: |
+          git clone --depth 1 https://github.com/v2fly/domain-list-community.git builder
+
+      - name: Build custom DAT file
+        run: |
+          cd builder
+          go mod download
+          go run ./ --datapath="${GITHUB_WORKSPACE}/data"
+          cp dlc.dat "${GITHUB_WORKSPACE}/pooria-geosite.dat"
+
+      - name: Commit generated DAT file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pooria-geosite.dat
+          git diff --cached --quiet || git commit -m "Build pooria-geosite.dat"
+          git push
